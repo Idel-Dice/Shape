@@ -25,57 +25,36 @@
     --teal: #5AC8FA;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; background: #111; font-family: 'DM Sans', -apple-system, sans-serif; }
+  html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', -apple-system, sans-serif; }
 
   #app {
-    display: flex; flex-direction: column; align-items: center;
-    padding: 20px 16px 40px; min-height: 100vh; background: #111;
+    width: 100%; min-height: 100svh; background: var(--bg);
   }
 
-  .device-toggle { display: flex; gap: 10px; margin-bottom: 20px; }
-  .toggle-btn {
-    padding: 8px 20px; border-radius: 12px; border: none;
-    font-family: inherit; font-size: 14px; font-weight: 600;
-    cursor: pointer; transition: background 0.2s, color 0.2s;
-  }
-  .toggle-btn.active { background: var(--blue); color: #fff; }
-  .toggle-btn.inactive { background: #3A3A3C; color: var(--sub); }
-
-  /* PHONE */
+  /* PHONE = full screen */
   .phone {
-    width: 390px; min-height: 844px; background: var(--bg);
-    border-radius: 54px; border: 1.5px solid #3A3A3C;
-    overflow: hidden; position: relative;
-    box-shadow: 0 40px 80px rgba(0,0,0,0.8), 0 0 0 0.5px #000;
-    transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    width: 100%; min-height: 100svh; background: var(--bg);
+    position: relative;
   }
-  .phone.watch-mode { width: 198px; min-height: 242px; border-radius: 44px; }
-  @media(max-width:430px) { .phone { width: 100%; border-radius: 0; min-height: 100svh; } }
-
-  .notch {
-    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-    width: 120px; height: 34px; background: #000;
-    border-radius: 0 0 20px 20px; z-index: 10;
-  }
-  .phone.watch-mode .notch { display: none; }
 
   .screen-content {
-    height: calc(100% - 82px); overflow-y: auto; overflow-x: hidden;
+    height: calc(100svh - 82px); overflow-y: auto; overflow-x: hidden;
     scrollbar-width: none;
   }
   .screen-content::-webkit-scrollbar { display: none; }
-  .phone.watch-mode .screen-content { height: 100%; }
 
   .screen { opacity: 1; transform: translateX(0); transition: opacity 0.25s, transform 0.25s; }
   .screen.animating { opacity: 0; transform: translateX(12px); }
 
   /* BOTTOM NAV */
   .bottom-nav {
-    position: absolute; bottom: 0; left: 0; right: 0;
+    position: fixed; bottom: 0; left: 0; right: 0;
     background: rgba(28,28,30,0.92);
     backdrop-filter: blur(20px);
     border-top: 0.5px solid var(--sep);
-    display: flex; padding-bottom: 20px;
+    display: flex;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+    z-index: 100;
   }
   .nav-btn {
     flex: 1; display: flex; flex-direction: column; align-items: center;
@@ -85,7 +64,6 @@
   }
   .nav-btn.active { color: var(--blue); font-weight: 600; }
   .nav-btn span.icon { font-size: 20px; }
-  .phone.watch-mode .bottom-nav { display: none; }
 
   /* CARDS */
   .card {
@@ -93,7 +71,7 @@
     padding: 16px; margin: 0 16px 12px;
   }
   .card2 { background: var(--card2); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
-  .header { padding: 52px 20px 8px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .header { padding: calc(env(safe-area-inset-top, 16px) + 16px) 20px 8px; display: flex; justify-content: space-between; align-items: flex-end; }
   .big-title { font-size: 28px; font-weight: 700; letter-spacing: -1px; }
   .label { font-size: 13px; color: var(--sub); font-weight: 500; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
   .big-num { font-size: 48px; font-weight: 700; letter-spacing: -2px; line-height: 1; }
@@ -194,12 +172,7 @@
 </head>
 <body>
 <div id="app">
-  <div class="device-toggle">
-    <button class="toggle-btn active" id="btn-iphone" onclick="setDevice('iphone')">📱 iPhone</button>
-    <button class="toggle-btn inactive" id="btn-watch" onclick="setDevice('watch')">⌚ Watch</button>
-  </div>
   <div class="phone" id="phone">
-    <div class="notch" id="notch"></div>
     <div class="screen-content" id="screen-content">
       <div class="screen" id="screen"></div>
     </div>
@@ -213,7 +186,6 @@ const C = {
   pink:'#FF375F', purple:'#BF5AF2', teal:'#5AC8FA', sub:'#8E8E93'
 };
 
-let watchMode = false;
 let currentScreen = 'dashboard';
 
 let state = {
@@ -675,29 +647,9 @@ function renderGoals(){
   </div>`;
 }
 
-function renderWatch(){
-  const op=overallProgress(), net=netCals(), rem=remaining(), lost=lostSoFar();
-  const now=new Date(); const h=now.getHours().toString().padStart(2,'0'); const m=now.getMinutes().toString().padStart(2,'0');
-  return `
-  <div class="watch-face">
-    <div class="watch-time">${h}:${m}</div>
-    <div class="watch-rings">
-      ${[
-        {p:pct(net,state.calories.goal),c:C.pink},
-        {p:pct(state.goals.exerciseMin.current,state.goals.exerciseMin.target),c:C.green},
-        {p:pct(state.goals.dailySteps.current,state.goals.dailySteps.target),c:C.blue},
-      ].map(r=>ring(44,4,r.p,r.c,`<span style="font-size:8px;color:${r.c}">${Math.round(r.p*100)}%</span>`)).join('')}
-    </div>
-    <div class="watch-card">
-      <div style="font-size:9px;color:var(--sub)">WEIGHT</div>
-      <div style="font-size:22px;font-weight:800">${state.currentWeight} <span style="font-size:11px;color:var(--sub)">lbs</span></div>
-      <div style="font-size:10px;color:${C.green}">▼ ${lost.toFixed(1)} lbs lost</div>
-    </div>
-    <div class="watch-card">
-      <div style="font-size:9px;color:var(--sub)">REMAINING</div>
-      <div style="font-size:18px;font-weight:700;color:${rem>0?C.orange:C.pink}">${rem} <span style="font-size:10px">cal</span></div>
-    </div>
-  </div>`;
+function getScreenHTML(){
+  const map={dashboard:renderDashboard,weight:renderWeight,calories:renderCalories,sleep:renderSleep,food:renderFood,reminders:renderReminders,goals:renderGoals};
+  return (map[currentScreen]||renderDashboard)();
 }
 
 const tabs=[
@@ -726,31 +678,6 @@ function navigate(id){
     el.classList.remove('animating');
   },200);
   renderNav();
-}
-
-function getScreenHTML(){
-  if(watchMode) return renderWatch();
-  const map={dashboard:renderDashboard,weight:renderWeight,calories:renderCalories,sleep:renderSleep,food:renderFood,reminders:renderReminders,goals:renderGoals};
-  return (map[currentScreen]||renderDashboard)();
-}
-
-function setDevice(d){
-  watchMode=d==='watch';
-  const phone=document.getElementById('phone');
-  const notch=document.getElementById('notch');
-  const nav=document.getElementById('bottom-nav');
-  if(watchMode){
-    phone.classList.add('watch-mode');
-    notch.style.display='none';
-    nav.style.display='none';
-  } else {
-    phone.classList.remove('watch-mode');
-    notch.style.display='block';
-    nav.style.display='flex';
-  }
-  document.getElementById('btn-iphone').className='toggle-btn '+(watchMode?'inactive':'active');
-  document.getElementById('btn-watch').className='toggle-btn '+(watchMode?'active':'inactive');
-  document.getElementById('screen').innerHTML=getScreenHTML();
 }
 
 function logWeight(){
