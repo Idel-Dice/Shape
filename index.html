@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="LeanOS"/>
+<title>LeanOS — Weight Loss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #000;
+    --card: #1C1C1E;
+    --card2: #2C2C2E;
+    --text: #fff;
+    --sub: #8E8E93;
+    --sep: #38383A;
+    --green: #30D158;
+    --blue: #0A84FF;
+    --orange: #FF9F0A;
+    --pink: #FF375F;
+    --purple: #BF5AF2;
+    --teal: #5AC8FA;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #111; font-family: 'DM Sans', -apple-system, sans-serif; }
+
+  #app {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 20px 16px 40px; min-height: 100vh; background: #111;
+  }
+
+  .device-toggle { display: flex; gap: 10px; margin-bottom: 20px; }
+  .toggle-btn {
+    padding: 8px 20px; border-radius: 12px; border: none;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background 0.2s, color 0.2s;
+  }
+  .toggle-btn.active { background: var(--blue); color: #fff; }
+  .toggle-btn.inactive { background: #3A3A3C; color: var(--sub); }
+
+  /* PHONE */
+  .phone {
+    width: 390px; min-height: 844px; background: var(--bg);
+    border-radius: 54px; border: 1.5px solid #3A3A3C;
+    overflow: hidden; position: relative;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.8), 0 0 0 0.5px #000;
+    transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .phone.watch-mode { width: 198px; min-height: 242px; border-radius: 44px; }
+  @media(max-width:430px) { .phone { width: 100%; border-radius: 0; min-height: 100svh; } }
+
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 34px; background: #000;
+    border-radius: 0 0 20px 20px; z-index: 10;
+  }
+  .phone.watch-mode .notch { display: none; }
+
+  .screen-content {
+    height: calc(100% - 82px); overflow-y: auto; overflow-x: hidden;
+    scrollbar-width: none;
+  }
+  .screen-content::-webkit-scrollbar { display: none; }
+  .phone.watch-mode .screen-content { height: 100%; }
+
+  .screen { opacity: 1; transform: translateX(0); transition: opacity 0.25s, transform 0.25s; }
+  .screen.animating { opacity: 0; transform: translateX(12px); }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(28,28,30,0.92);
+    backdrop-filter: blur(20px);
+    border-top: 0.5px solid var(--sep);
+    display: flex; padding-bottom: 20px;
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 2px; padding: 8px 0 4px; border: none; background: none;
+    color: var(--sub); font-size: 10px; font-weight: 400;
+    font-family: inherit; cursor: pointer; transition: color 0.2s;
+  }
+  .nav-btn.active { color: var(--blue); font-weight: 600; }
+  .nav-btn span.icon { font-size: 20px; }
+  .phone.watch-mode .bottom-nav { display: none; }
+
+  /* CARDS */
+  .card {
+    background: var(--card); border-radius: 16px;
+    padding: 16px; margin: 0 16px 12px;
+  }
+  .card2 { background: var(--card2); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .header { padding: 52px 20px 8px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .big-title { font-size: 28px; font-weight: 700; letter-spacing: -1px; }
+  .label { font-size: 13px; color: var(--sub); font-weight: 500; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .big-num { font-size: 48px; font-weight: 700; letter-spacing: -2px; line-height: 1; }
+  .row { display: flex; align-items: center; gap: 12px; }
+  .sep { height: 1px; background: var(--sep); margin: 14px 0; }
+  .sub-text { color: var(--sub); }
+
+  .pill {
+    border-radius: 20px; padding: 4px 10px;
+    font-size: 12px; font-weight: 600;
+  }
+
+  /* RING */
+  .ring-wrap { position: relative; flex-shrink: 0; }
+  .ring-wrap svg { display: block; }
+  .ring-inner {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  circle.track { transition: none; }
+  circle.fill { transition: stroke-dasharray 0.8s ease; }
+
+  /* CHART */
+  .chart-labels { display: flex; justify-content: space-between; margin-top: 8px; }
+  .chart-labels span { font-size: 9px; color: var(--sub); }
+
+  /* PROGRESS BAR */
+  .prog-bar { height: 8px; border-radius: 4px; transition: background 0.6s ease; }
+
+  /* TOGGLE */
+  .ios-toggle { width: 51px; height: 31px; border-radius: 15.5px; position: relative; cursor: pointer; flex-shrink: 0; transition: background 0.25s; }
+  .ios-toggle.on { background: var(--green); }
+  .ios-toggle.off { background: #3A3A3C; }
+  .ios-knob { position: absolute; width: 27px; height: 27px; background: #fff; border-radius: 50%; top: 2px; transition: left 0.25s; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+  .ios-toggle.on .ios-knob { left: 22px; }
+  .ios-toggle.off .ios-knob { left: 2px; }
+
+  /* INPUTS */
+  input[type=number], input[type=time] {
+    background: var(--card2); border: none; border-radius: 10px;
+    color: var(--text); font-size: 16px; padding: 12px 14px;
+    outline: none; font-family: inherit; width: 100%;
+  }
+  input[type=time] { font-size: 24px; font-weight: 700; }
+
+  .btn {
+    border: none; border-radius: 12px; padding: 13px 0;
+    width: 100%; font-size: 16px; font-weight: 600;
+    cursor: pointer; font-family: inherit; letter-spacing: -0.3px;
+    color: #fff;
+  }
+  .btn-blue { background: var(--blue); }
+  .btn-green { background: var(--green); }
+  .btn-purple { background: var(--purple); }
+  .btn-inline { width: auto; padding: 12px 20px; }
+
+  /* CHECKBOX */
+  .check-circle {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 2px solid var(--sub); background: transparent;
+    cursor: pointer; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; transition: all 0.2s;
+  }
+  .check-circle.done { border-color: var(--green); background: var(--green); }
+  .check-circle.done::after { content: '✓'; font-size: 12px; color: #000; font-weight: 700; }
+
+  /* WATCH FACE */
+  .watch-face { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .watch-time { font-size: 11px; color: var(--sub); text-align: center; font-family: 'DM Mono', monospace; }
+  .watch-rings { display: flex; justify-content: center; gap: 8px; }
+  .watch-card { background: var(--card); border-radius: 10px; padding: 8px 10px; }
+
+  /* UTILS */
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .mb4 { margin-bottom: 4px; }
+  .mb6 { margin-bottom: 6px; }
+  .mb8 { margin-bottom: 8px; }
+  .mb10 { margin-bottom: 10px; }
+  .mb12 { margin-bottom: 12px; }
+  .mb14 { margin-bottom: 14px; }
+  .fw600 { font-weight: 600; }
+  .fw700 { font-weight: 700; }
+  .fw800 { font-weight: 800; }
+  .fs11 { font-size: 11px; }
+  .fs12 { font-size: 12px; }
+  .fs13 { font-size: 13px; }
+  .fs14 { font-size: 14px; }
+  .fs15 { font-size: 15px; }
+  .fs18 { font-size: 18px; }
+  .fs22 { font-size: 22px; }
+  .fs24 { font-size: 24px; }
+  .item-sep { border-bottom: 1px solid var(--sep); }
+  .list-item { padding: 10px 0; }
+  .list-item:last-child { border-bottom: none !important; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 16px 12px; }
+  .mini-card { background: var(--card); border-radius: 16px; padding: 14px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="device-toggle">
+    <button class="toggle-btn active" id="btn-iphone" onclick="setDevice('iphone')">📱 iPhone</button>
+    <button class="toggle-btn inactive" id="btn-watch" onclick="setDevice('watch')">⌚ Watch</button>
+  </div>
+  <div class="phone" id="phone">
+    <div class="notch" id="notch"></div>
+    <div class="screen-content" id="screen-content">
+      <div class="screen" id="screen"></div>
+    </div>
+    <nav class="bottom-nav" id="bottom-nav"></nav>
+  </div>
+</div>
+
+<script>
+const C = {
+  green:'#30D158', blue:'#0A84FF', orange:'#FF9F0A',
+  pink:'#FF375F', purple:'#BF5AF2', teal:'#5AC8FA', sub:'#8E8E93'
+};
+
+let watchMode = false;
+let currentScreen = 'dashboard';
+
+let state = {
+  startWeight: 210,
+  currentWeight: 203.0,
+  goalWeight: 175,
+  weightLog: [
+    {date:'May 1',weight:210},{date:'May 5',weight:208.4},
+    {date:'May 10',weight:207.1},{date:'May 15',weight:205.8},
+    {date:'May 20',weight:204.2},{date:'May 23',weight:203.0},
+  ],
+  calories: {goal:1800, consumed:1240, burned:320},
+  sleep: {bedtime:'22:30', wakeTime:'06:30'},
+  meals: [
+    {id:1,name:'Greek Yogurt + Berries',cal:180,time:'7:30 AM',done:true},
+    {id:2,name:'Grilled Chicken Salad',cal:420,time:'12:30 PM',done:true},
+    {id:3,name:'Apple + Almond Butter',cal:210,time:'3:30 PM',done:false},
+    {id:4,name:'Salmon + Veggies',cal:480,time:'7:00 PM',done:false},
+  ],
+  reminders: [
+    {id:1,label:'Morning Weigh-In',time:'07:00',active:true,icon:'⚖️'},
+    {id:2,label:'Drink 16oz Water',time:'08:00',active:true,icon:'💧'},
+    {id:3,label:'10-min Walk',time:'10:00',active:true,icon:'🚶'},
+    {id:4,label:'Log Lunch',time:'12:30',active:true,icon:'🥗'},
+    {id:5,label:'Afternoon Stretch',time:'15:00',active:false,icon:'🧘'},
+    {id:6,label:'Evening Walk',time:'18:00',active:true,icon:'🌅'},
+    {id:7,label:'No Food After 8PM',time:'20:00',active:true,icon:'🚫'},
+    {id:8,label:'Bedtime Wind Down',time:'22:00',active:true,icon:'🌙'},
+  ],
+  goals: {
+    dailySteps:{target:8000,current:5430},
+    waterOz:{target:64,current:40},
+    exerciseMin:{target:30,current:18},
+    calDeficit:{target:500,current:358},
+  }
+};
+
+function pct(a,b){ return Math.min(a/b,1); }
+function lostSoFar(){ return state.startWeight - state.currentWeight; }
+function toGo(){ return state.currentWeight - state.goalWeight; }
+function totalToLose(){ return state.startWeight - state.goalWeight; }
+function overallProgress(){ return lostSoFar()/totalToLose(); }
+function netCals(){ return state.calories.consumed - state.calories.burned; }
+function remaining(){ return state.calories.goal - netCals(); }
+function eatenCals(){ return state.meals.filter(m=>m.done).reduce((s,m)=>s+m.cal,0); }
+
+function ring(size, stroke, progress, color, innerHTML=''){
+  const r=(size-stroke)/2, circ=2*Math.PI*r;
+  const dash=circ*Math.min(progress,1);
+  return `<div class="ring-wrap" style="width:${size}px;height:${size}px">
+    <svg width="${size}" height="${size}" style="transform:rotate(-90deg)">
+      <circle class="track" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${stroke}"/>
+      <circle class="fill" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+        stroke-dasharray="${dash} ${circ}" stroke-linecap="round"/>
+    </svg>
+    <div class="ring-inner">${innerHTML}</div>
+  </div>`;
+}
+
+function progressBar(p, color){
+  const pct2=Math.min(p,1)*100;
+  return `<div class="prog-bar" style="background:linear-gradient(90deg,${color} ${pct2}%,#3A3A3C ${pct2}%)"></div>`;
+}
+
+function pill(text, color){
+  return `<span class="pill" style="background:${color}22;color:${color}">${text}</span>`;
+}
+
+function weightChart(){
+  const log=state.weightLog, w=280, h=120;
+  const vals=log.map(d=>d.weight);
+  const min=Math.min(...vals)-1, max=Math.max(...vals)+1;
+  const pts=log.map((d,i)=>{
+    const x=(i/(log.length-1))*(w-20)+10;
+    const y=h-((d.weight-min)/(max-min))*(h-20)-10;
+    return {x,y};
+  });
+  const pathD=pts.reduce((acc,p,i)=>i===0?`M${p.x},${p.y}`:`${acc} L${p.x},${p.y}`,'');
+  const areaD=`${pathD} L${w-10},${h} L10,${h} Z`;
+  const circles=pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="4" fill="${C.green}" stroke="#1C1C1E" stroke-width="2"/>`).join('');
+  return `<svg width="${w}" height="${h}" style="overflow:visible">
+    <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${C.green}" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="${C.green}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${areaD}" fill="url(#cg)"/>
+    <path d="${pathD}" fill="none" stroke="${C.green}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${circles}
+  </svg>`;
+}
+
+// ---- SCREENS ----
+function renderDashboard(){
+  const op=overallProgress(), net=netCals(), rem=remaining();
+  const lost=lostSoFar(), tog=toGo();
+  const next=state.meals.find(m=>!m.done);
+  return `
+  <div>
+    <div class="header">
+      <div>
+        <div style="font-size:13px;color:var(--sub)">Saturday, May 23</div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:-1px">Good morning 👋</div>
+      </div>
+      ${pill(Math.round(op*100)+'% to goal', C.green)}
+    </div>
+
+    <div class="card" style="background:linear-gradient(135deg,#1C1C1E,#2C2C2E)">
+      <div class="row">
+        ${ring(90,9,op,C.green,`<span style="font-size:13px;font-weight:700;color:${C.green}">${Math.round(op*100)}%</span>`)}
+        <div style="flex:1">
+          <div class="label">Current Weight</div>
+          <div style="font-size:40px;font-weight:700;letter-spacing:-2px;line-height:1">${state.currentWeight} <span style="font-size:20px;color:var(--sub)">lbs</span></div>
+          <div style="color:var(--sub);font-size:13px;margin-top:4px">
+            <span style="color:${C.green}">▼ ${lost.toFixed(1)} lbs</span> lost · ${tog.toFixed(1)} to go
+          </div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div style="display:flex;justify-content:space-around">
+        ${[['START',state.startWeight,'var(--text)'],['CURRENT',state.currentWeight,C.green],['GOAL',state.goalWeight,'var(--text)']].map(([l,v,c])=>`
+          <div style="text-align:center">
+            <div style="font-size:11px;color:var(--sub)">${l}</div>
+            <div style="font-size:18px;font-weight:700;color:${c}">${v}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb14">Today's Rings</div>
+      <div style="display:flex;justify-content:space-around">
+        ${[
+          {label:'Calories',val:net,target:state.calories.goal,color:C.pink},
+          {label:'Steps',val:state.goals.dailySteps.current,target:state.goals.dailySteps.target,color:C.green},
+          {label:'Exercise',val:state.goals.exerciseMin.current,target:state.goals.exerciseMin.target,color:C.blue},
+        ].map(item=>`
+          <div style="text-align:center">
+            ${ring(72,7,pct(item.val,item.target),item.color,`<span style="font-size:10px;font-weight:700;color:${item.color}">${Math.round(pct(item.val,item.target)*100)}%</span>`)}
+            <div style="font-size:11px;color:var(--sub);margin-top:6px">${item.label}</div>
+            <div style="font-size:12px;font-weight:600">${item.val.toLocaleString()}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="mini-card">
+        <div style="font-size:22px">🔥</div>
+        <div class="fs11 sub-text" style="margin-top:4px">Remaining</div>
+        <div style="font-size:16px;font-weight:700;color:${C.orange}">${rem} cal</div>
+      </div>
+      <div class="mini-card">
+        <div style="font-size:22px">💧</div>
+        <div class="fs11 sub-text" style="margin-top:4px">Water</div>
+        <div style="font-size:16px;font-weight:700;color:${C.teal}">${state.goals.waterOz.current}/${state.goals.waterOz.target} oz</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="fs13 sub-text mb8">NEXT MEAL</div>
+      ${next ? `
+        <div class="row">
+          <div style="font-size:28px">🥗</div>
+          <div style="flex:1">
+            <div class="fs15 fw600">${next.name}</div>
+            <div class="fs13 sub-text">${next.time} · ${next.cal} cal</div>
+          </div>
+          ${pill(next.time, C.orange)}
+        </div>` : `<div style="color:${C.green};font-size:15px;font-weight:600">All meals logged! ✓</div>`}
+    </div>
+  </div>`;
+}
+
+function renderWeight(){
+  const op=overallProgress(), lost=lostSoFar(), tog=toGo();
+  const logRows=[...state.weightLog].reverse().slice(0,5).map((e,i)=>`
+    <div class="row list-item ${i<4?'item-sep':''}">
+      <div style="width:8px;height:8px;border-radius:50%;background:${i===0?C.green:'var(--sub)'}"></div>
+      <div style="flex:1;font-size:15px">${e.date}</div>
+      <div style="font-size:15px;font-weight:600">${e.weight} <span style="color:var(--sub);font-size:13px">lbs</span></div>
+    </div>`).join('');
+  return `
+  <div>
+    <div class="header"><div class="big-title">Weight</div></div>
+    <div class="card">
+      <div class="row">
+        ${ring(100,10,op,C.green,`<div style="text-align:center"><div style="font-size:11px;color:var(--sub)">DONE</div><div style="font-size:16px;font-weight:700;color:${C.green}">${Math.round(op*100)}%</div></div>`)}
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+            ${[['Start',state.startWeight,'var(--text)'],['Now',state.currentWeight,C.green],['Goal',state.goalWeight,'var(--text)']].map(([l,v,c])=>`
+              <div style="text-align:center">
+                <div class="fs11 sub-text">${l}</div>
+                <div style="font-size:22px;font-weight:700;color:${c}">${v}</div>
+              </div>`).join('')}
+          </div>
+          <div style="font-size:13px;color:var(--sub)">
+            Lost: <span style="color:${C.green};font-weight:600">${lost.toFixed(1)} lbs</span>
+            &nbsp;·&nbsp;
+            Left: <span style="color:${C.orange};font-weight:600">${tog.toFixed(1)} lbs</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb12">Log Today's Weight</div>
+      <div class="row">
+        <input type="number" id="weight-input" placeholder="lbs e.g. 202.5" style="flex:1" step="0.1"/>
+        <button class="btn btn-green btn-inline" onclick="logWeight()">Log</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb14">Progress Chart</div>
+      ${weightChart()}
+      <div class="chart-labels">
+        ${state.weightLog.map(d=>`<span>${d.date.split(' ')[1]}</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb10">Weight Log</div>
+      ${logRows}
+    </div>
+  </div>`;
+}
+
+function renderCalories(){
+  const net=netCals(), rem=remaining();
+  const remColor=rem>0?C.orange:C.pink;
+  return `
+  <div>
+    <div class="header"><div class="big-title">Calories</div></div>
+    <div class="card">
+      <div class="row">
+        ${ring(110,11,pct(net,state.calories.goal),remColor,`<div style="text-align:center"><div style="font-size:22px;font-weight:800;color:${remColor}">${rem}</div><div style="font-size:10px;color:var(--sub)">remaining</div></div>`)}
+        <div style="flex:1;padding-left:8px">
+          ${[['Goal',state.calories.goal,'var(--sub)'],['Eaten',state.calories.consumed,C.orange],['Burned',state.calories.burned,C.green],['Net',net,rem>0?'var(--text)':C.pink]].map(([l,v,c])=>`
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span class="fs14 sub-text">${l}</span>
+              <span style="font-size:14px;font-weight:600;color:${c}">${v} <span style="font-size:11px">kcal</span></span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb10">Macros</div>
+      ${[
+        {name:'Protein',val:95,target:140,unit:'g',color:C.blue},
+        {name:'Carbs',val:110,target:180,unit:'g',color:C.orange},
+        {name:'Fat',val:42,target:60,unit:'g',color:C.purple},
+      ].map((m,i)=>`
+        <div style="margin-bottom:${i<2?'14px':'0'}">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span class="fs14">${m.name}</span>
+            <span class="fs13 sub-text">${m.val}/${m.target}${m.unit}</span>
+          </div>
+          ${progressBar(pct(m.val,m.target),m.color)}
+        </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb4">Calorie Budget</div>
+      <div class="fs13 sub-text mb12">~500 cal/day deficit = 1 lb/week loss</div>
+      <div class="card2">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span class="sub-text">Daily Target</span><span class="fw600">${state.calories.goal} kcal</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span class="sub-text">Deficit Today</span>
+          <span style="color:${C.green};font-weight:600">${state.calories.goal-net} kcal</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderSleep(){
+  const bed=state.sleep.bedtime, wake=state.sleep.wakeTime;
+  const bedH=parseInt(bed.split(':')[0])+parseInt(bed.split(':')[1])/60;
+  const wakeH=parseInt(wake.split(':')[0])+parseInt(wake.split(':')[1])/60;
+  const hrs=wakeH<bedH?(24-bedH)+wakeH:wakeH-bedH;
+  const score=Math.min(100,Math.round((hrs/8)*100));
+  const scoreColor=score>=90?C.green:score>=70?C.orange:C.pink;
+  return `
+  <div>
+    <div class="header"><div class="big-title">Sleep</div></div>
+    <div class="card">
+      <div style="text-align:center">
+        ${ring(120,12,pct(hrs,8),C.purple,`<div><div style="font-size:28px;font-weight:800">${hrs.toFixed(1)}</div><div style="font-size:11px;color:var(--sub)">hours</div></div>`)}
+        <div style="margin-top:12px;font-size:15px;color:var(--sub)">
+          Sleep Score: <span style="color:${scoreColor};font-weight:700">${score}/100</span>
+        </div>
+        <div style="font-size:13px;color:var(--sub);margin-top:4px">
+          ${hrs>=7?'✅ Great sleep for weight loss!':'⚠️ Poor sleep increases hunger hormones'}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb14">Sleep Schedule</div>
+      <div class="mb14">
+        <div class="fs13 sub-text mb6">Bedtime 🌙</div>
+        <input type="time" id="bedtime-input" value="${bed}" onchange="updateSleep()"/>
+      </div>
+      <div class="mb14">
+        <div class="fs13 sub-text mb6">Wake Time ☀️</div>
+        <input type="time" id="wake-input" value="${wake}" onchange="updateSleep()"/>
+      </div>
+      <button class="btn btn-purple" onclick="saveSleep()">Save Schedule</button>
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb10">Sleep & Weight Loss</div>
+      ${[
+        {icon:'💤',tip:'7–9 hrs reduces cortisol, which causes fat storage'},
+        {icon:'🛑',tip:'Under 6 hrs increases ghrelin (hunger hormone) by 15%'},
+        {icon:'⏰',tip:'Consistent sleep schedule regulates metabolism'},
+      ].map((t,i)=>`
+        <div class="row list-item ${i<2?'item-sep':''}">
+          <span style="font-size:22px">${t.icon}</span>
+          <span class="fs13 sub-text" style="flex:1">${t.tip}</span>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderFood(){
+  const consumed=eatenCals();
+  const mealRows=state.meals.map((m,i)=>`
+    <div class="row list-item ${i<state.meals.length-1?'item-sep':''}" style="opacity:${m.done?1:0.75}">
+      <div class="check-circle ${m.done?'done':''}" onclick="toggleMeal(${m.id})"></div>
+      <div style="flex:1">
+        <div class="fs15" style="font-weight:500;text-decoration:${m.done?'line-through':'none'};color:${m.done?'var(--sub)':'var(--text)'}">${m.name}</div>
+        <div class="fs12 sub-text">${m.time}</div>
+      </div>
+      <div style="font-size:14px;font-weight:600;color:${m.done?'var(--sub)':C.orange}">${m.cal} cal</div>
+    </div>`).join('');
+  return `
+  <div>
+    <div class="header"><div class="big-title">Food Plan</div></div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+        <div class="fs15 fw600">Today's Meals</div>
+        ${pill(consumed+' / '+state.calories.goal+' cal', C.orange)}
+      </div>
+      ${mealRows}
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb10">Smart Food Tips</div>
+      ${[
+        {icon:'🥦',tip:'Fill half your plate with non-starchy vegetables'},
+        {icon:'🍗',tip:'Aim for 0.8g protein per lb of goal body weight'},
+        {icon:'🚫',tip:'Avoid eating within 3 hours of bedtime'},
+        {icon:'🍽️',tip:'Use a 9-inch plate to naturally control portions'},
+      ].map((t,i)=>`
+        <div class="row list-item ${i<3?'item-sep':''}">
+          <span style="font-size:20px">${t.icon}</span>
+          <span class="fs13 sub-text" style="flex:1">${t.tip}</span>
+        </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb10">Weekly Meal Prep</div>
+      ${['Sunday: Batch cook proteins & grains','Monday–Friday: Assemble fresh meals','Prep snack packs for the week'].map((t,i)=>`
+        <div style="font-size:13px;color:var(--sub);padding:6px 0;${i<2?'border-bottom:1px solid var(--sep)':''}">${t}</div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderReminders(){
+  const active=state.reminders.filter(r=>r.active).length;
+  const rows=state.reminders.map((r,i)=>`
+    <div class="row list-item ${i<state.reminders.length-1?'item-sep':''}">
+      <span style="font-size:24px;width:36px">${r.icon}</span>
+      <div style="flex:1">
+        <div class="fs15" style="font-weight:500;color:${r.active?'var(--text)':'var(--sub)'}">${r.label}</div>
+        <div class="fs13 sub-text">${r.time}</div>
+      </div>
+      <div class="ios-toggle ${r.active?'on':'off'}" onclick="toggleReminder(${r.id})">
+        <div class="ios-knob"></div>
+      </div>
+    </div>`).join('');
+  return `
+  <div>
+    <div class="header">
+      <div class="big-title">Reminders</div>
+      <div class="fs13 sub-text">${active} active</div>
+    </div>
+    <div class="card">${rows}</div>
+    <div class="card">
+      <div class="fs15 fw600 mb4">Why These Reminders?</div>
+      <div class="fs13 sub-text" style="line-height:1.6">
+        Behavioral science shows consistent daily cues reduce decision fatigue and build automatic healthy habits — the backbone of sustainable weight loss.
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderGoals(){
+  const {dailySteps,waterOz,exerciseMin,calDeficit}=state.goals;
+  const daysLogged=state.weightLog.length;
+  const tog=toGo();
+  const projWeeks=Math.ceil(tog/1);
+  const goalDate=new Date(Date.now()+projWeeks*7*86400000).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const items=[
+    {label:'Daily Steps',icon:'👟',cur:dailySteps.current,target:dailySteps.target,unit:'steps',color:C.green},
+    {label:'Water Intake',icon:'💧',cur:waterOz.current,target:waterOz.target,unit:'oz',color:C.teal},
+    {label:'Exercise',icon:'🏃',cur:exerciseMin.current,target:exerciseMin.target,unit:'min',color:C.blue},
+    {label:'Calorie Deficit',icon:'🔥',cur:calDeficit.current,target:calDeficit.target,unit:'kcal',color:C.orange},
+  ];
+  const milestones=[
+    {label:'Log weight 5+ days',done:daysLogged>=5},
+    {label:'Hit calorie goal 5 days',done:false},
+    {label:'Exercise 150+ mins',done:false},
+    {label:'Sleep 7+ hrs every night',done:true},
+  ];
+  return `
+  <div>
+    <div class="header"><div class="big-title">Daily Goals</div></div>
+    <div class="card">
+      <div class="fs15 fw600 mb4">Weight Loss Projection</div>
+      <div class="fs13 sub-text mb14">Based on 1 lb/week at 500 cal/day deficit</div>
+      <div style="display:flex;justify-content:space-around">
+        ${[[daysLogged,'Days Tracked',C.blue],[projWeeks,'Weeks to Goal',C.orange],[goalDate,'Goal Date',C.green]].map(([v,l,c])=>`
+          <div style="text-align:center">
+            <div style="font-size:24px;font-weight:800;color:${c}">${v}</div>
+            <div class="fs11 sub-text">${l}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb14">Today's Goals</div>
+      ${items.map((g,i)=>`
+        <div style="margin-bottom:${i<items.length-1?'16px':'0'}">
+          <div class="row mb6">
+            <span style="font-size:18px">${g.icon}</span>
+            <span class="fs14" style="flex:1">${g.label}</span>
+            <span class="fs13">
+              <span style="font-weight:700;color:${g.color}">${g.cur.toLocaleString()}</span>
+              <span class="sub-text"> / ${g.target.toLocaleString()} ${g.unit}</span>
+            </span>
+          </div>
+          ${progressBar(pct(g.cur,g.target),g.color)}
+        </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <div class="fs15 fw600 mb10">Weekly Milestones</div>
+      ${milestones.map((m,i)=>`
+        <div class="row list-item ${i<3?'item-sep':''}">
+          <div style="width:22px;height:22px;border-radius:50%;background:${m.done?C.green:'#3A3A3C'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${m.done?'<span style="font-size:12px">✓</span>':''}
+          </div>
+          <span class="fs14" style="color:${m.done?'var(--text)':'var(--sub)'}">${m.label}</span>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderWatch(){
+  const op=overallProgress(), net=netCals(), rem=remaining(), lost=lostSoFar();
+  const now=new Date(); const h=now.getHours().toString().padStart(2,'0'); const m=now.getMinutes().toString().padStart(2,'0');
+  return `
+  <div class="watch-face">
+    <div class="watch-time">${h}:${m}</div>
+    <div class="watch-rings">
+      ${[
+        {p:pct(net,state.calories.goal),c:C.pink},
+        {p:pct(state.goals.exerciseMin.current,state.goals.exerciseMin.target),c:C.green},
+        {p:pct(state.goals.dailySteps.current,state.goals.dailySteps.target),c:C.blue},
+      ].map(r=>ring(44,4,r.p,r.c,`<span style="font-size:8px;color:${r.c}">${Math.round(r.p*100)}%</span>`)).join('')}
+    </div>
+    <div class="watch-card">
+      <div style="font-size:9px;color:var(--sub)">WEIGHT</div>
+      <div style="font-size:22px;font-weight:800">${state.currentWeight} <span style="font-size:11px;color:var(--sub)">lbs</span></div>
+      <div style="font-size:10px;color:${C.green}">▼ ${lost.toFixed(1)} lbs lost</div>
+    </div>
+    <div class="watch-card">
+      <div style="font-size:9px;color:var(--sub)">REMAINING</div>
+      <div style="font-size:18px;font-weight:700;color:${rem>0?C.orange:C.pink}">${rem} <span style="font-size:10px">cal</span></div>
+    </div>
+  </div>`;
+}
+
+const tabs=[
+  {id:'dashboard',icon:'🏠',label:'Home'},
+  {id:'weight',icon:'⚖️',label:'Weight'},
+  {id:'calories',icon:'🔥',label:'Calories'},
+  {id:'sleep',icon:'🌙',label:'Sleep'},
+  {id:'food',icon:'🥗',label:'Food'},
+  {id:'reminders',icon:'🔔',label:'Alerts'},
+  {id:'goals',icon:'🎯',label:'Goals'},
+];
+
+function renderNav(){
+  document.getElementById('bottom-nav').innerHTML=tabs.map(t=>`
+    <button class="nav-btn ${currentScreen===t.id?'active':''}" onclick="navigate('${t.id}')">
+      <span class="icon">${t.icon}</span><span>${t.label}</span>
+    </button>`).join('');
+}
+
+function navigate(id){
+  currentScreen=id;
+  const el=document.getElementById('screen');
+  el.classList.add('animating');
+  setTimeout(()=>{
+    el.innerHTML=getScreenHTML();
+    el.classList.remove('animating');
+  },200);
+  renderNav();
+}
+
+function getScreenHTML(){
+  if(watchMode) return renderWatch();
+  const map={dashboard:renderDashboard,weight:renderWeight,calories:renderCalories,sleep:renderSleep,food:renderFood,reminders:renderReminders,goals:renderGoals};
+  return (map[currentScreen]||renderDashboard)();
+}
+
+function setDevice(d){
+  watchMode=d==='watch';
+  const phone=document.getElementById('phone');
+  const notch=document.getElementById('notch');
+  const nav=document.getElementById('bottom-nav');
+  if(watchMode){
+    phone.classList.add('watch-mode');
+    notch.style.display='none';
+    nav.style.display='none';
+  } else {
+    phone.classList.remove('watch-mode');
+    notch.style.display='block';
+    nav.style.display='flex';
+  }
+  document.getElementById('btn-iphone').className='toggle-btn '+(watchMode?'inactive':'active');
+  document.getElementById('btn-watch').className='toggle-btn '+(watchMode?'active':'inactive');
+  document.getElementById('screen').innerHTML=getScreenHTML();
+}
+
+function logWeight(){
+  const inp=document.getElementById('weight-input');
+  const w=parseFloat(inp.value);
+  if(!w||w<50||w>500) return;
+  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  state.currentWeight=w;
+  state.weightLog=[...state.weightLog.slice(-9),{date:today,weight:w}];
+  inp.value='';
+  navigate('weight');
+}
+
+function toggleMeal(id){
+  state.meals=state.meals.map(m=>m.id===id?{...m,done:!m.done}:m);
+  state.calories.consumed=eatenCals();
+  navigate('food');
+}
+
+function toggleReminder(id){
+  state.reminders=state.reminders.map(r=>r.id===id?{...r,active:!r.active}:r);
+  navigate('reminders');
+}
+
+function updateSleep(){
+  const b=document.getElementById('bedtime-input');
+  const w=document.getElementById('wake-input');
+  if(b) state.sleep.bedtime=b.value;
+  if(w) state.sleep.wakeTime=w.value;
+  // re-render just the ring portion without full nav
+  const el=document.getElementById('screen');
+  el.innerHTML=renderSleep();
+}
+
+function saveSleep(){
+  const b=document.getElementById('bedtime-input');
+  const w=document.getElementById('wake-input');
+  if(b) state.sleep.bedtime=b.value;
+  if(w) state.sleep.wakeTime=w.value;
+  navigate('sleep');
+}
+
+// Init
+document.getElementById('screen').innerHTML=getScreenHTML();
+renderNav();
+</script>
+</body>
+</html>
