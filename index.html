@@ -464,6 +464,8 @@ circle.fill{transition:stroke-dasharray 0.8s ease;}
     <div class="card" id="goals-projection-card"></div>
     <div class="card" id="goals-daily-card"></div>
     <div class="card" id="goals-milestones-card"></div>
+    <div class="card" id="goals-step-logger"></div>
+    <div class="card" id="goals-exercise-logger"></div>
     <div class="card">
       <div class="card-title">Calorie &amp; Macro Goals</div>
       <div class="settings-row"><label>Calories</label><input type="number" id="goal-cals" value="2000" min="500" max="10000" inputmode="decimal"/></div>
@@ -649,6 +651,8 @@ function renderDashboard(){
   const op=overallProgress(),lost=lostSoFar(),tog=toGo();
   const{tc}=getDayTotals(getTodayStr());
   const gc=fuelGoals.cals||2000,rem=gc-Math.round(tc);
+  const act=loadActivity();
+  document.getElementById('dash-rings-card') && null; // removed
   document.getElementById('dash-hero').innerHTML=`
     <div style="display:flex;align-items:center;gap:14px;">
       ${shapeRing(92,10,op,C.green,`<span style="font-size:13px;font-weight:800;color:${C.green}">${Math.round(op*100)}%</span>`)}
@@ -1012,34 +1016,162 @@ function toggleReminder(id){
   saveShape();renderAlertsTab();
 }
 
+// ═══ ACTIVITY LOG ═══
+function getActivityKey(){return 'activity_'+getTodayStr();}
+function loadActivity(){
+  try{return JSON.parse(localStorage.getItem(getActivityKey())||'{"steps":0,"exerciseMin":0,"exerciseSessions":[]}');}
+  catch{return{steps:0,exerciseMin:0,exerciseSessions:[]};}
+}
+function saveActivity(a){localStorage.setItem(getActivityKey(),JSON.stringify(a));}
+
+function logSteps(delta){
+  const a=loadActivity();
+  a.steps=Math.max(0,a.steps+delta);
+  saveActivity(a);renderGoalsTab();renderDashboard();
+}
+function setStepsManual(){
+  const val=parseInt(document.getElementById('steps-manual-input').value);
+  if(isNaN(val)||val<0){showToast('Enter a valid step count');return;}
+  const a=loadActivity();a.steps=val;saveActivity(a);
+  document.getElementById('steps-manual-input').value='';
+  showToast('✓ Steps updated','green');renderGoalsTab();renderDashboard();
+}
+function logExercise(){
+  const mins=parseInt(document.getElementById('ex-mins-input').value)||0;
+  const type=document.getElementById('ex-type-input').value.trim()||'Workout';
+  if(mins<=0){showToast('Enter minutes > 0');return;}
+  const a=loadActivity();
+  a.exerciseMin+=mins;
+  a.exerciseSessions.push({type,mins,time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
+  saveActivity(a);
+  document.getElementById('ex-mins-input').value='';
+  document.getElementById('ex-type-input').value='';
+  showToast(`✓ +${mins} min ${type} logged`,'green');
+  renderGoalsTab();renderDashboard();
+}
+function deleteExerciseSession(idx){
+  const a=loadActivity();
+  const removed=a.exerciseSessions[idx];
+  if(!removed)return;
+  a.exerciseMin=Math.max(0,a.exerciseMin-removed.mins);
+  a.exerciseSessions.splice(idx,1);
+  saveActivity(a);renderGoalsTab();renderDashboard();
+}
+
 // ═══ GOALS TAB ═══
 function renderGoalsTab(){
-  const{dailySteps,waterOz,exerciseMin}=shape.goals;
+  const act=loadActivity();
+  const waterFilled=loadWater();
+  const{dailySteps,exerciseMin}=shape.goals;
+  const waterOzGoal=shape.goals.waterOz.target;
   const tog=toGo(),projWeeks=Math.max(1,Math.ceil(tog/1));
   const goalDate=new Date(Date.now()+projWeeks*7*86400000).toLocaleDateString('en-US',{month:'short',day:'numeric'});
   const daysLogged=shape.weightLog.length;
   const gc=fuelGoals.cals||2000;
   const{tc}=getDayTotals(getTodayStr());
   const deficit=gc-Math.round(tc);
+  const waterOzActual=waterFilled*8;
+
+  // Projection
   document.getElementById('goals-projection-card').innerHTML=`
     <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Weight Loss Projection</div>
     <div style="font-size:13px;color:var(--sub);margin-bottom:13px;">Based on 1 lb/week at 500 cal/day deficit</div>
     <div style="display:flex;justify-content:space-around;">${[[daysLogged,'Days Tracked',C.blue],[projWeeks,'Weeks to Goal',C.orange],[goalDate,'Goal Date',C.green]].map(([v,l,c])=>`<div style="text-align:center;"><div style="font-size:26px;font-weight:800;color:${c};">${v}</div><div style="font-size:11px;color:var(--sub);">${l}</div></div>`).join('')}</div>`;
+
+  // Today's progress with real data
+  const progressItems=[
+    {label:'Daily Steps',icon:'👟',cur:act.steps,target:dailySteps.target,unit:'steps',color:C.green,source:'manual'},
+    {label:'Water Intake',icon:'💧',cur:waterOzActual,target:waterOzGoal,unit:'oz',color:C.teal,source:'home'},
+    {label:'Exercise',icon:'🏃',cur:act.exerciseMin,target:exerciseMin.target,unit:'min',color:C.blue,source:'manual'},
+    {label:'Cal Deficit',icon:'🔥',cur:Math.max(0,deficit),target:500,unit:'kcal',color:C.orange,source:'fuel'},
+  ];
   document.getElementById('goals-daily-card').innerHTML=`
-    <div style="font-size:15px;font-weight:700;margin-bottom:13px;">Today's Progress</div>
-    ${[{label:'Daily Steps',icon:'👟',cur:dailySteps.current,target:dailySteps.target,unit:'steps',color:C.green},{label:'Water Intake',icon:'💧',cur:waterOz.current,target:waterOz.target,unit:'oz',color:C.teal},{label:'Exercise',icon:'🏃',cur:exerciseMin.current,target:exerciseMin.target,unit:'min',color:C.blue},{label:'Cal Deficit',icon:'🔥',cur:Math.max(0,deficit),target:500,unit:'kcal',color:C.orange}].map((g,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;">
+      <div style="font-size:15px;font-weight:700;">Today's Progress</div>
+      <div style="font-size:10px;color:var(--sub);font-family:'DM Mono',monospace;letter-spacing:0.5px;">All data is real ✓</div>
+    </div>
+    ${progressItems.map((g,i)=>`
       <div style="margin-bottom:${i<3?'14px':'0'};">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:18px;">${g.icon}</span><span style="font-size:14px;flex:1;">${g.label}</span><span style="font-size:13px;"><span style="font-weight:700;color:${g.color};">${g.cur.toLocaleString()}</span><span style="color:var(--sub);"> / ${g.target.toLocaleString()} ${g.unit}</span></span></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:18px;">${g.icon}</span>
+          <span style="font-size:14px;flex:1;">${g.label}</span>
+          <span style="font-size:10px;color:var(--sub);font-family:'DM Mono',monospace;margin-right:4px;">${g.source==='home'?'← home':g.source==='fuel'?'← fuel':''}</span>
+          <span style="font-size:13px;"><span style="font-weight:700;color:${g.color};">${g.cur.toLocaleString()}</span><span style="color:var(--sub);"> / ${g.target.toLocaleString()} ${g.unit}</span></span>
+        </div>
         ${progBar(pct(g.cur,g.target),g.color)}
       </div>`).join('')}`;
-  const milestones=[{label:'Log weight 5+ days',done:daysLogged>=5},{label:'Hit calorie goal 5 days',done:false},{label:'Exercise 150+ mins this week',done:false},{label:'Sleep 7+ hrs every night',done:true}];
+
+  // Milestones — all wired to real data
+  const exWeekMins=getWeekExerciseMins();
+  const calGoalDays=getCalGoalDaysThisWeek();
+  const milestones=[
+    {label:`Log weight 5+ days (${daysLogged} logged)`,done:daysLogged>=5},
+    {label:`Hit calorie goal 5 days this week (${calGoalDays}/5)`,done:calGoalDays>=5},
+    {label:`Exercise 150+ mins this week (${exWeekMins} min)`,done:exWeekMins>=150},
+    {label:`Hit water goal today (${waterOzActual}/${waterOzGoal} oz)`,done:waterOzActual>=waterOzGoal},
+  ];
   document.getElementById('goals-milestones-card').innerHTML=`
     <div style="font-size:15px;font-weight:700;margin-bottom:10px;">Weekly Milestones</div>
-    ${milestones.map((m,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:9px 0;${i<3?'border-bottom:1px solid var(--sep)':''}"><div style="width:22px;height:22px;border-radius:50%;background:${m.done?C.green:'#1A3A5C'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${m.done?'<span style="font-size:12px;color:#000;font-weight:800;">✓</span>':''}</div><span style="font-size:14px;color:${m.done?'var(--text)':'var(--sub)'};">${m.label}</span></div>`).join('')}`;
+    ${milestones.map((m,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:9px 0;${i<3?'border-bottom:1px solid var(--sep)':''}">
+      <div style="width:22px;height:22px;border-radius:50%;background:${m.done?C.green:'#1A3A5C'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${m.done?'<span style="font-size:12px;color:#000;font-weight:800;">✓</span>':''}</div>
+      <span style="font-size:13px;color:${m.done?'var(--text)':'var(--sub)'};">${m.label}</span>
+    </div>`).join('')}`;
+
+  // Step Logger
+  document.getElementById('goals-step-logger').innerHTML=`
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px;">👟 Log Steps</div>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:12px;">iPhone Health can't be read from web apps — log here instead</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input type="number" id="steps-manual-input" placeholder="e.g. 4500" inputmode="numeric" style="flex:1;"/>
+      <button class="primary-btn" style="width:auto;padding:13px 16px;font-size:0.85rem;" onclick="setStepsManual()">Set</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${[500,1000,2000,5000].map(n=>`<button onclick="logSteps(${n})" style="background:var(--card2);border:1px solid var(--sep);color:var(--teal);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation;">+${n.toLocaleString()}</button>`).join('')}
+      <button onclick="logSteps(-500)" style="background:var(--card2);border:1px solid var(--sep);color:var(--sub);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;touch-action:manipulation;">−500</button>
+    </div>
+    <div style="margin-top:10px;font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--teal);">Today: ${act.steps.toLocaleString()} / ${dailySteps.target.toLocaleString()} steps</div>`;
+
+  // Exercise Logger
+  const sessions=act.exerciseSessions||[];
+  document.getElementById('goals-exercise-logger').innerHTML=`
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px;">🏃 Log Exercise</div>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:12px;">Log each workout session below</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <input type="text" id="ex-type-input" placeholder="Activity (e.g. Walk, Gym)" style="flex:2;" autocomplete="off"/>
+      <input type="number" id="ex-mins-input" placeholder="Min" inputmode="numeric" style="flex:1;"/>
+      <button class="primary-btn" style="width:auto;padding:13px 14px;font-size:0.85rem;" onclick="logExercise()">Log</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      ${[['Walk',20],['Run',30],['Gym',45],['Bike',30],['Swim',30],['Yoga',30]].map(([t,m])=>`<button onclick="document.getElementById('ex-type-input').value='${t}';document.getElementById('ex-mins-input').value='${m}';" style="background:var(--card2);border:1px solid var(--sep);color:var(--sub);border-radius:10px;padding:7px 10px;font-size:11px;cursor:pointer;font-family:inherit;touch-action:manipulation;">${t} ${m}m</button>`).join('')}
+    </div>
+    ${sessions.length?`<div style="border-top:1px solid var(--sep);padding-top:10px;">${sessions.map((s,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;${i<sessions.length-1?'border-bottom:1px solid var(--sep)':''}"><span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--teal);flex-shrink:0;">${s.time}</span><span style="flex:1;font-size:13px;">${s.type}</span><span style="font-size:12px;font-weight:700;color:${C.blue};">${s.mins} min</span><button onclick="deleteExerciseSession(${i})" style="background:none;border:none;color:var(--sub);cursor:pointer;font-size:14px;padding:4px;touch-action:manipulation;">✕</button></div>`).join('')}</div>`:'<div style="font-size:0.7rem;color:var(--sub);font-family:\'DM Mono\',monospace;text-align:center;padding:8px 0;">No sessions logged yet today</div>'}
+    <div style="margin-top:10px;font-family:'DM Mono',monospace;font-size:0.8rem;color:${C.blue};">Today: ${act.exerciseMin} / ${exerciseMin.target} min</div>`;
+
   document.getElementById('goal-cals').value=fuelGoals.cals||2000;
   document.getElementById('goal-protein').value=fuelGoals.protein||150;
   document.getElementById('goal-carbs').value=fuelGoals.carbs||250;
   document.getElementById('goal-fat').value=fuelGoals.fat||65;
+}
+
+function getWeekExerciseMins(){
+  let total=0;
+  for(let i=0;i<7;i++){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const key='activity_'+d.toISOString().slice(0,10);
+    try{const a=JSON.parse(localStorage.getItem(key)||'{}');total+=(a.exerciseMin||0);}catch{}
+  }
+  return total;
+}
+function getCalGoalDaysThisWeek(){
+  let days=0;
+  const gc=fuelGoals.cals||2000;
+  for(let i=0;i<7;i++){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const ds=d.toISOString().slice(0,10);
+    const{tc}=getDayTotals(ds);
+    if(tc>0&&tc<=gc)days++;
+  }
+  return days;
 }
 
 // ═══ SETUP MODAL ═══
