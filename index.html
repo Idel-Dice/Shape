@@ -232,6 +232,22 @@ circle.fill{transition:stroke-dasharray 0.8s ease;}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
 .toast.green{background:var(--green);color:#03100A;box-shadow:0 4px 24px rgba(0,229,160,0.35);}
 #qty-serving-hint{display:none;font-size:0.63rem;color:var(--teal);font-family:'DM Mono',monospace;margin-top:5px;padding:5px 8px;background:rgba(0,212,255,0.07);border-radius:6px;}
+/* ── WATER LOG ── */
+.water-drops{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+.water-drop{width:38px;height:38px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid var(--teal);cursor:pointer;transition:background 0.2s,transform 0.15s;touch-action:manipulation;flex-shrink:0;}
+.water-drop.filled{background:var(--teal);}
+.water-drop:active{transform:rotate(-45deg) scale(0.9);}
+.water-progress-bar{height:6px;border-radius:99px;background:var(--sep);overflow:hidden;margin-top:6px;}
+.water-progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),var(--teal));transition:width 0.4s ease;}
+/* ── COACHING TIP ── */
+.tip-card-inner{display:flex;gap:12px;align-items:flex-start;}
+.tip-icon{font-size:28px;flex-shrink:0;line-height:1;}
+.tip-body{flex:1;}
+.tip-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--teal);font-weight:700;margin-bottom:5px;font-family:'DM Mono',monospace;}
+.tip-text{font-size:14px;line-height:1.55;color:var(--text);}
+.tip-dots{display:flex;gap:5px;margin-top:10px;}
+.tip-dot{width:6px;height:6px;border-radius:50%;background:var(--sep);transition:background 0.3s;}
+.tip-dot.active{background:var(--teal);}
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-thumb{background:var(--sep);border-radius:99px;}
 </style>
@@ -244,7 +260,6 @@ circle.fill{transition:stroke-dasharray 0.8s ease;}
   <button class="nav-btn" onclick="showTab('calories',this)"><span class="icon">🔥</span><span class="label">Calories</span></button>
   <button class="nav-btn" onclick="showTab('add',this)"><span class="icon">＋</span><span class="label">Add Food</span></button>
   <button class="nav-btn" onclick="showTab('scan',this)"><span class="icon">▦</span><span class="label">Scan</span></button>
-  <button class="nav-btn" onclick="showTab('sleep',this)"><span class="icon">🌙</span><span class="label">Sleep</span></button>
   <button class="nav-btn" onclick="showTab('alerts',this)"><span class="icon">🔔</span><span class="label">Alerts</span></button>
   <button class="nav-btn" onclick="showTab('goals',this)"><span class="icon">🎯</span><span class="label">Goals</span></button>
 </nav>
@@ -254,11 +269,8 @@ circle.fill{transition:stroke-dasharray 0.8s ease;}
   <div class="page-inner" style="padding-top:calc(env(safe-area-inset-top,10px)+14px);">
     <div class="card" id="dash-hero" style="background:linear-gradient(135deg,#0D1E35,#0A2545,#0D3060);"></div>
     <div class="card" id="dash-cal-card"></div>
-    <div class="card" id="dash-rings-card"></div>
-    <div class="two-col">
-      <div class="mini-card" id="dash-stat1"></div>
-      <div class="mini-card" id="dash-stat2"></div>
-    </div>
+    <div class="card" id="dash-water-card"></div>
+    <div class="card" id="dash-tip-card"></div>
   </div>
 </div>
 <!-- WEIGHT -->
@@ -442,10 +454,6 @@ circle.fill{transition:stroke-dasharray 0.8s ease;}
     </div>
   </div>
 </div>
-<!-- SLEEP -->
-<div class="tab-pane" id="tab-sleep">
-  <div class="page-inner" id="sleep-pane-inner" style="padding-top:calc(env(safe-area-inset-top,10px)+14px);"></div>
-</div>
 <!-- ALERTS -->
 <div class="tab-pane" id="tab-alerts">
   <div class="page-inner" id="alerts-pane-inner" style="padding-top:calc(env(safe-area-inset-top,10px)+14px);"></div>
@@ -562,9 +570,78 @@ function renderTab(n){
   if(n==='dashboard')renderDashboard();
   else if(n==='weight')renderWeightTab();
   else if(n==='calories')renderFuelToday();
-  else if(n==='sleep')renderSleepTab();
   else if(n==='alerts')renderAlertsTab();
   else if(n==='goals')renderGoalsTab();
+}
+
+// ═══ COACHING TIPS ═══
+const TIPS=[
+  {icon:'💧',text:'Drinking water before meals can reduce calorie intake by up to 13%. Aim for 16 oz about 30 minutes before eating.'},
+  {icon:'🥩',text:'Protein keeps you full longer than carbs or fat. Every meal should include a quality protein source to protect muscle while losing fat.'},
+  {icon:'🌙',text:'Poor sleep increases ghrelin (hunger hormone) by 15% and decreases leptin (fullness hormone). 7–9 hrs is a weight-loss tool, not a luxury.'},
+  {icon:'🚶',text:'A 10-minute walk after meals blunts blood sugar spikes by up to 30%, reducing fat storage and afternoon energy crashes.'},
+  {icon:'🍽️',text:'Eating slowly takes 20 minutes for your brain to register fullness. Put the fork down between bites — you\'ll naturally eat less.'},
+  {icon:'📉',text:'A 500 kcal daily deficit = ~1 lb of fat per week. Consistent small deficits beat aggressive restriction every time.'},
+  {icon:'🥗',text:'Non-starchy vegetables are nearly calorie-free but fill your plate and stomach. Fill half your plate before adding other foods.'},
+  {icon:'☀️',text:'Morning sunlight exposure within 30 minutes of waking regulates circadian rhythm, which directly impacts metabolism and hunger hormones.'},
+  {icon:'💪',text:'Muscle burns calories at rest. Preserving or building lean mass with resistance training is the most sustainable way to increase metabolism.'},
+  {icon:'🧠',text:'Stress raises cortisol, which promotes belly fat storage. Even 5 minutes of deep breathing daily measurably lowers cortisol levels.'},
+  {icon:'🍳',text:'Cooking at home is one of the strongest predictors of weight loss success — restaurant meals average 60% more calories than home meals.'},
+  {icon:'⏰',text:'Time-restricted eating (eating within an 8–10 hour window) improves fat oxidation and insulin sensitivity without strict calorie counting.'},
+  {icon:'🥦',text:'Fiber slows digestion, feeds good gut bacteria, and keeps you full. Aim for 25–35g daily from vegetables, legumes, and whole grains.'},
+  {icon:'🚫',text:'Liquid calories are invisible to your brain\'s fullness signals. Juice, soda, and fancy coffees can silently add 300–600 kcal per day.'},
+  {icon:'📊',text:'People who weigh themselves daily lose more weight. It\'s not about the number — it\'s the feedback loop that keeps you accountable.'},
+];
+let _tipIdx=0, _tipTimer=null;
+function startTipRotation(){
+  clearInterval(_tipTimer);
+  _tipTimer=setInterval(()=>{_tipIdx=(_tipIdx+1)%TIPS.length;renderTip(true);},12000);
+}
+function renderTip(animate){
+  const card=document.getElementById('dash-tip-card');if(!card)return;
+  const tip=TIPS[_tipIdx];
+  const dots=TIPS.map((_,i)=>`<div class="tip-dot${i===_tipIdx?' active':''}"></div>`).join('');
+  if(animate){card.style.opacity='0';card.style.transform='translateY(6px)';}
+  setTimeout(()=>{
+    card.innerHTML=`
+      <div class="tip-label">💡 Daily Coaching Tip</div>
+      <div class="tip-card-inner">
+        <div class="tip-icon">${tip.icon}</div>
+        <div class="tip-body"><div class="tip-text">${tip.text}</div></div>
+      </div>
+      <div class="tip-dots">${dots}</div>`;
+    card.style.transition='opacity 0.4s ease, transform 0.4s ease';
+    card.style.opacity='1';card.style.transform='translateY(0)';
+  },animate?180:0);
+}
+
+// ═══ WATER LOG ═══
+const WATER_CUPS=8; // 8 × 8oz = 64oz goal
+function getWaterKey(){return'water_'+getTodayStr();}
+function loadWater(){try{return parseInt(localStorage.getItem(getWaterKey())||'0');}catch{return 0;}}
+function saveWater(n){localStorage.setItem(getWaterKey(),n);}
+function toggleWaterCup(n){
+  let cur=loadWater();
+  cur=(cur===n)?n-1:n;
+  saveWater(cur);renderWaterCard();renderDashboard();
+}
+function renderWaterCard(){
+  const filled=loadWater(),total=WATER_CUPS;
+  const oz=filled*8,goalOz=total*8;
+  const pctW=Math.round((filled/total)*100);
+  const card=document.getElementById('dash-water-card');if(!card)return;
+  const drops=Array.from({length:total},(_,i)=>`<div class="water-drop${i<filled?' filled':''}" onclick="toggleWaterCup(${i+1})" title="${(i+1)*8}oz"></div>`).join('');
+  card.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="font-size:15px;font-weight:700;">💧 Daily Water Log</div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:${filled>=total?C.green:C.teal};">${oz} / ${goalOz} oz</div>
+    </div>
+    <div class="water-drops">${drops}</div>
+    <div class="water-progress-bar"><div class="water-progress-fill" style="width:${pctW}%"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px;">
+      <div style="font-size:11px;color:var(--sub);">Tap a drop to log 8 oz</div>
+      <div style="font-size:11px;color:${filled>=total?C.green:C.sub};font-weight:600;">${filled>=total?'✓ Goal reached!':`${total-filled} cups to go`}</div>
+    </div>`;
 }
 
 // ═══ DASHBOARD ═══
@@ -572,7 +649,6 @@ function renderDashboard(){
   const op=overallProgress(),lost=lostSoFar(),tog=toGo();
   const{tc}=getDayTotals(getTodayStr());
   const gc=fuelGoals.cals||2000,rem=gc-Math.round(tc);
-  const g=shape.goals;
   document.getElementById('dash-hero').innerHTML=`
     <div style="display:flex;align-items:center;gap:14px;">
       ${shapeRing(92,10,op,C.green,`<span style="font-size:13px;font-weight:800;color:${C.green}">${Math.round(op*100)}%</span>`)}
@@ -592,11 +668,9 @@ function renderDashboard(){
       <div style="flex:1;">${[['Eaten',Math.round(tc),C.orange],['Goal',gc,'var(--sub)']].map(([l,v,c])=>`<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:13px;color:var(--sub);">${l}</span><span style="font-size:14px;font-weight:700;color:${c};">${v} kcal</span></div>`).join('')}
       <div style="cursor:pointer;color:var(--teal);font-size:12px;font-weight:600;" onclick="showTab('add',document.querySelectorAll('.nav-btn')[3])">+ Log Food →</div></div>
     </div>`;
-  document.getElementById('dash-rings-card').innerHTML=`
-    <div style="font-size:15px;font-weight:700;margin-bottom:13px;">Activity Rings</div>
-    <div style="display:flex;justify-content:space-around;">${[{label:'Steps',val:g.dailySteps.current,target:g.dailySteps.target,color:C.green},{label:'Exercise',val:g.exerciseMin.current,target:g.exerciseMin.target,color:C.blue},{label:'Water',val:g.waterOz.current,target:g.waterOz.target,color:C.teal}].map(item=>`<div style="text-align:center;">${shapeRing(70,7,pct(item.val,item.target),item.color,`<span style="font-size:10px;font-weight:800;color:${item.color};">${Math.round(pct(item.val,item.target)*100)}%</span>`)}<div style="font-size:11px;color:var(--sub);margin-top:5px;">${item.label}</div><div style="font-size:12px;font-weight:700;">${item.val.toLocaleString()}</div></div>`).join('')}</div>`;
-  document.getElementById('dash-stat1').innerHTML=`<div style="font-size:22px;">🔥</div><div style="font-size:11px;color:var(--sub);margin-top:4px;">Remaining</div><div style="font-size:17px;font-weight:800;color:${rem>=0?C.orange:C.pink};">${rem} cal</div>`;
-  document.getElementById('dash-stat2').innerHTML=`<div style="font-size:22px;">💧</div><div style="font-size:11px;color:var(--sub);margin-top:4px;">Water</div><div style="font-size:17px;font-weight:800;color:${C.teal};">${g.waterOz.current}/${g.waterOz.target} oz</div>`;
+  renderWaterCard();
+  renderTip(false);
+  startTipRotation();
 }
 
 // ═══ WEIGHT TAB ═══
@@ -910,49 +984,6 @@ function saveToCustomDB(){
   if(existing>=0){db[existing]=entry;showToast(`"${name}" updated in My Database`);}
   else{db.push(entry);showToast(`"${name}" saved to My Database`);}
   saveCustomDB(db);
-}
-
-// ═══ SLEEP TAB ═══
-function renderSleepTab(){
-  const bed=shape.sleep.bedtime,wake=shape.sleep.wakeTime;
-  const bedH=parseInt(bed.split(':')[0])+parseInt(bed.split(':')[1])/60;
-  const wakeH=parseInt(wake.split(':')[0])+parseInt(wake.split(':')[1])/60;
-  const hrs=wakeH<bedH?(24-bedH)+wakeH:wakeH-bedH;
-  const score=Math.min(100,Math.round((hrs/8)*100));
-  const sc=score>=90?C.green:score>=70?C.orange:C.pink;
-  document.getElementById('sleep-pane-inner').innerHTML=`
-    <div class="card">
-      <div style="text-align:center;">
-        ${shapeRing(120,13,Math.min(hrs/8,1),C.purple,`<div><div style="font-size:30px;font-weight:800;">${hrs.toFixed(1)}</div><div style="font-size:11px;color:var(--sub);">hours</div></div>`)}
-        <div style="margin-top:12px;font-size:15px;color:var(--sub);">Sleep Score: <span style="color:${sc};font-weight:800;">${score}/100</span></div>
-        <div style="font-size:13px;color:var(--sub);margin-top:4px;">${hrs>=7?'✅ Great sleep for weight loss!':'⚠️ Poor sleep raises hunger hormones'}</div>
-      </div>
-    </div>
-    <div class="card">
-      <div style="font-size:15px;font-weight:700;margin-bottom:13px;">Sleep Schedule</div>
-      <div style="margin-bottom:13px;">
-        <div style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Bedtime 🌙</div>
-        <input type="time" id="bedtime-input" value="${bed}" onchange="liveSleepUpdate()"/>
-      </div>
-      <div style="margin-bottom:13px;">
-        <div style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Wake Time ☀️</div>
-        <input type="time" id="wake-input" value="${wake}" onchange="liveSleepUpdate()"/>
-      </div>
-      <button class="shape-btn btn-purple" onclick="saveSleep()">Save Schedule</button>
-    </div>
-    <div class="card">
-      <div style="font-size:15px;font-weight:700;margin-bottom:10px;">Sleep & Weight Loss</div>
-      ${[['💤','7–9 hrs reduces cortisol, which causes fat storage'],['🛑','Under 6 hrs increases ghrelin (hunger hormone) by 15%'],['⏰','Consistent sleep schedule regulates metabolism']].map((t,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;${i<2?'border-bottom:1px solid var(--sep)':''};"><span style="font-size:22px;">${t[0]}</span><span style="font-size:13px;color:var(--sub);flex:1;">${t[1]}</span></div>`).join('')}
-    </div>`;
-}
-function liveSleepUpdate(){
-  const b=document.getElementById('bedtime-input'),w=document.getElementById('wake-input');
-  if(b)shape.sleep.bedtime=b.value;if(w)shape.sleep.wakeTime=w.value;renderSleepTab();
-}
-function saveSleep(){
-  const b=document.getElementById('bedtime-input'),w=document.getElementById('wake-input');
-  if(b)shape.sleep.bedtime=b.value;if(w)shape.sleep.wakeTime=w.value;
-  saveShape();showToast('✓ Sleep schedule saved','green');
 }
 
 // ═══ ALERTS TAB ═══
